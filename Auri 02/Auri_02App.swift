@@ -1,0 +1,17 @@
+//
+//  Auri_02App.swift
+//  Auri 02
+//
+//  Created by Justin Oliak on 3/20/25.
+//
+
+import SwiftUI
+
+@main
+struct Auri_02App: App {
+    var body: some Scene {
+        WindowGroup {
+            ContentView()
+        }
+    }
+}
