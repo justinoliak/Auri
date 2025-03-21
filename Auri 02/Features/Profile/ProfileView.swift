@@ -1,14 +1,20 @@
 import SwiftUI
 
 struct ProfileView: View {
+    @Environment(SessionManager.self) private var sessionManager
+    
     var body: some View {
         NavigationView {
             List {
                 Section {
-                    Text("email@example.com")
-                        .foregroundColor(.white)
+                    if let email = sessionManager.currentUser?.email {
+                        Text(email)
+                            .foregroundColor(.white)
+                    }
                     Button("Sign Out") {
-                        // TODO: Implement sign out
+                        Task {
+                            await sessionManager.signOut()
+                        }
                     }
                 } header: {
                     Text("Account")

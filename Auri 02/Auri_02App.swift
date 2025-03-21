@@ -9,9 +9,12 @@ import SwiftUI
 
 @main
 struct Auri_02App: App {
+    @State private var sessionManager = SessionManager()
+    
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            SplashView()
+                .environment(sessionManager)
         }
     }
 }

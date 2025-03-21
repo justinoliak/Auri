@@ -36,12 +36,18 @@ struct HomeView: View {
                         .padding(.bottom, 40)
                         
                         VStack(spacing: 20) {
-                            MoodCard()
-                                .frame(height: 100)
+                            MoodCard(
+                                mood: "Today's Mood",
+                                description: "Based on your entries, you seem focused and optimistic"
+                            )
+                            .frame(height: 100)
                             
                             ForEach(0..<3) { index in
-                                EntryCard()
-                                    .frame(height: 80)
+                                EntryCard(
+                                    title: "Previous Entry",
+                                    content: "Your past journal entries will appear here..."
+                                )
+                                .frame(height: 80)
                             }
                             
                             Color.clear.frame(height: 40)
@@ -51,6 +57,8 @@ struct HomeView: View {
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .toolbarBackground(.ultraThinMaterial, for: .navigationBar)
             .toolbar {
                 ToolbarItem(placement: .principal) {
                     Text(currentDateString)
@@ -59,7 +67,7 @@ struct HomeView: View {
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button {
-                        withAnimation(.easeInOut(duration: 0.3)) {
+                        withAnimation(.easeIn) {
                             showingProfile.toggle()
                         }
                     } label: {
@@ -82,42 +90,7 @@ struct HomeView: View {
     }
 }
 
-private struct MoodCard: View {
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Today's Mood")
-                .font(Theme.newYorkHeadline(20))
-                .foregroundColor(.white)
-            Text("Based on your entries, you seem focused and optimistic")
-                .font(Theme.sfProText(14))
-                .foregroundColor(.gray)
-                .lineLimit(2)
-        }
-        .padding()
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.backgroundSecondary)
-        .cornerRadius(16)
-    }
-}
-
-private struct EntryCard: View {
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("Previous Entry")
-                .font(Theme.newYorkHeadline(16))
-                .foregroundColor(.white)
-            Text("Your past journal entries will appear here...")
-                .font(Theme.sfProText(14))
-                .foregroundColor(.gray)
-                .lineLimit(1)
-        }
-        .padding()
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.backgroundSecondary)
-        .cornerRadius(16)
-    }
-}
-
+// MARK: - TextEntryView
 struct TextEntryView: View {
     @Binding var journalText: String
     @Binding var isPresented: Bool
