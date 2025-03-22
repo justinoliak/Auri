@@ -19,7 +19,7 @@ import SwiftUI
         do {
             analysisText = try await container.aiService.generateAnalysis(for: journalText)
         } catch {
-            container.errorHandler.handle(error)
+            container.errorHandler.handleError(error)
         }
         
         isGeneratingAnalysis = false

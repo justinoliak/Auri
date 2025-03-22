@@ -7,7 +7,19 @@ protocol ServiceContainer {
     var aiService: AIServiceProtocol { get }
     var journalService: JournalServiceProtocol { get }
     var sessionManager: SessionManager { get }
-    var errorHandler: ErrorHandler { get }
+    var errorHandler: ErrorHandling { get }
+}
+
+// MARK: - Environment Keys
+private struct SessionManagerKey: EnvironmentKey {
+    static let defaultValue: SessionManager? = nil
+}
+
+extension EnvironmentValues {
+    var sessionManager: SessionManager? {
+        get { self[SessionManagerKey.self] }
+        set { self[SessionManagerKey.self] = newValue }
+    }
 }
 
 // MARK: - Container Implementation
@@ -16,7 +28,7 @@ final class DIContainer: ServiceContainer {
     let aiService: AIServiceProtocol
     let journalService: JournalServiceProtocol
     let sessionManager: SessionManager
-    let errorHandler: ErrorHandler
+    let errorHandler: ErrorHandling
     
     init(
         aiService: AIServiceProtocol? = nil,
@@ -35,7 +47,7 @@ final class DIContainer: ServiceContainer {
     }
 }
 
-// MARK: - Environment Keys
+// MARK: - Container Environment
 private struct DIContainerKey: EnvironmentKey {
     static let defaultValue: DIContainer? = nil
 }
@@ -51,8 +63,7 @@ extension EnvironmentValues {
 extension View {
     func inject(_ container: DIContainer) -> some View {
         self
-            .environment(container.sessionManager)
-            .environmentObject(container.errorHandler)
             .environment(\.container, container)
+            .environment(\.sessionManager, container.sessionManager)
     }
 }

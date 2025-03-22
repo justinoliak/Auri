@@ -6,14 +6,22 @@ struct HomeView: View {
     
     @Environment(\.container) private var container: DIContainer?
     @Environment(SessionManager.self) private var sessionManager
-    @State private var showingProfile = false
-    @State private var showTextEntry = false
-    @State private var isRecording = false
-    @State private var showingError = false
-    @State private var showContent = false
     
-    @State private var textEntryTransition = false
+    // MARK: - View State
+    @State private var viewState = ViewState()
     
+    private let transitionDuration: Double = 0.4
+    
+    struct ViewState {
+        var showingProfile = false
+        var showTextEntry = false
+        var isRecording = false
+        var showingError = false
+        var error: Error?
+        var textEntryTransition = false
+    }
+    
+    // MARK: - Computed Properties
     private var currentDateString: String {
         Date().formatted(
             .dateTime
@@ -23,7 +31,74 @@ struct HomeView: View {
         )
     }
     
-    private let transitionDuration: Double = 0.4
+    // MARK: - View Components
+    @ViewBuilder
+    private var headerView: some View {
+        if !viewState.showTextEntry {
+            HomeHeaderView(
+                date: currentDateString,
+                onProfileTap: {
+                    withAnimation(.easeIn) {
+                        viewState.showingProfile.toggle()
+                    }
+                }
+            )
+        }
+    }
+    
+    @ViewBuilder
+    private var auraSection: some View {
+        if !viewState.showTextEntry {
+            VStack {
+                AuraView(
+                    onTap: {
+                        withAnimation(.easeInOut(duration: transitionDuration)) {
+                            viewState.showTextEntry = true
+                            viewState.textEntryTransition = true
+                        }
+                    },
+                    onRecordingChange: { isRecording in
+                        if isRecording {
+                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                        }
+                        viewState.isRecording = isRecording
+                    }
+                )
+                .frame(maxWidth: .infinity)
+                .frame(minHeight: 260)
+                .shadow(color: .black.opacity(0.2), radius: 10)
+            }
+            .padding(.horizontal, 32)
+            .padding(.bottom, 40)
+            .transition(.opacity)
+        }
+    }
+    
+    @ViewBuilder
+    private var entriesView: some View {
+        if let container = container {
+            EntriesListView(
+                entries: container.journalService.entries,
+                firstEntryAnalysis: container.journalService.entries.first?.analysis
+            )
+        }
+    }
+    
+    @ViewBuilder
+    private var textEntryOverlay: some View {
+        if let container = container {
+            Color.black
+                .opacity(viewState.textEntryTransition ? 0.5 : 0)
+                .ignoresSafeArea()
+                .transition(.opacity.animation(.easeInOut(duration: transitionDuration)))
+            
+            TextEntryView(
+                isPresented: $viewState.showTextEntry,
+                container: container
+            )
+            .transition(.scale(scale: 0.95).combined(with: .opacity))
+        }
+    }
     
     var body: some View {
         NavigationStack {
@@ -32,84 +107,9 @@ struct HomeView: View {
                 
                 ScrollView(showsIndicators: false) {
                     LazyVStack(spacing: 0) {
-                        if !showTextEntry {
-                            HStack {
-                                Text(currentDateString)
-                                    .font(Theme.newYorkHeadline(20))
-                                    .fontWeight(.medium)
-                                    .foregroundColor(.white)
-                                
-                                Spacer()
-                                
-                                Button {
-                                    withAnimation(.easeIn) {
-                                        showingProfile.toggle()
-                                    }
-                                } label: {
-                                    Image(systemName: "person.circle")
-                                        .font(.system(size: 24))
-                                        .foregroundColor(.white)
-                                }
-                            }
-                            .padding(.horizontal)
-                            .padding(.top, 60)
-                            .padding(.bottom, 24)
-                            .transition(.opacity)
-                            
-                            VStack {
-                                AuraView(
-                                    onTap: {
-                                        withAnimation(.easeInOut(duration: transitionDuration)) {
-                                            showTextEntry = true
-                                            textEntryTransition = true
-                                        }
-                                    },
-                                    onRecordingChange: { isRecording in
-                                        if isRecording {
-                                            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                                        }
-                                        self.isRecording = isRecording
-                                    }
-                                )
-                                .frame(maxWidth: .infinity)
-                                .frame(minHeight: 260)
-                                .shadow(color: .black.opacity(0.2), radius: 10)
-                            }
-                            .padding(.horizontal, 32)
-                            .padding(.bottom, 40)
-                            .transition(.opacity)
-                            
-                            VStack(spacing: 24) {
-                                MoodCard(
-                                    mood: "Today's Mood",
-                                    description: container?.journalService.entries.first?.analysis ?? "Share how you're feeling..."
-                                )
-                                .frame(minHeight: 100)
-                                .shadow(color: .black.opacity(0.1), radius: 5)
-                                
-                                ForEach(container?.journalService.entries.prefix(3) ?? [], id: \.id) { entry in
-                                    EntryCard(
-                                        title: entry.createdAt.formatted(date: .abbreviated, time: .shortened),
-                                        content: entry.text
-                                    )
-                                    .frame(minHeight: 80)
-                                }
-                                
-                                if container?.journalService.entries.isEmpty ?? true {
-                                    ForEach(0..<2) { _ in
-                                        EntryCard(
-                                            title: "New Entry",
-                                            content: "Tap the aura to start journaling..."
-                                        )
-                                        .opacity(0.5)
-                                    }
-                                }
-                                
-                                Color.clear.frame(height: 40)
-                            }
-                            .padding(.horizontal)
-                            .transition(.opacity)
-                        }
+                        headerView
+                        auraSection
+                        entriesView
                     }
                     .padding(.top, 20)
                 }
@@ -118,57 +118,115 @@ struct HomeView: View {
                 }
                 .edgesIgnoringSafeArea(.top)
                 
-                if showTextEntry {
-                    Color.black
-                        .opacity(textEntryTransition ? 0.5 : 0)
-                        .ignoresSafeArea()
-                        .transition(.opacity.animation(.easeInOut(duration: transitionDuration)))
-                }
-                
-                if showTextEntry, let container = container {
-                    TextEntryView(
-                        isPresented: $showTextEntry,
-                        container: container
-                    )
-                    .transition(.scale(scale: 0.95).combined(with: .opacity))
+                if viewState.showTextEntry {
+                    textEntryOverlay
                 }
             }
             .navigationBarHidden(true)
-            .fullScreenCover(isPresented: $showingProfile) {
+            .fullScreenCover(isPresented: $viewState.showingProfile) {
                 if let container = container {
-                    NavigationStack {
-                        ProfileView(container: container)
-                    }
-                    .preferredColorScheme(.dark)
+                    ProfileView(container: container)
                 }
             }
-            .animation(.easeInOut(duration: transitionDuration), value: showTextEntry)
-            .alert("Error", isPresented: $showingError) {
+            .alert("Error", isPresented: $viewState.showingError) {
                 Button("OK", role: .cancel) { }
             } message: {
-                Text(container?.journalService.error ?? "An error occurred")
+                Text(viewState.error?.localizedDescription ?? "An error occurred")
             }
             .task {
-                await loadEntries()
+                do {
+                    try await loadEntries()
+                } catch {
+                    viewState.error = error
+                    viewState.showingError = true
+                }
             }
         }
         .preferredColorScheme(.dark)
-        .onChange(of: showTextEntry) { _, isShowing in
+        .onChange(of: viewState.showTextEntry) { _, isShowing in
             if !isShowing {
                 withAnimation(.easeInOut(duration: transitionDuration)) {
-                    textEntryTransition = false
+                    viewState.textEntryTransition = false
                 }
             }
         }
     }
     
-    private func loadEntries() async {
-        guard let container = container,
-              let userId = sessionManager.currentUser?.id.uuidString else {
-            return
+    private func loadEntries() async throws {
+        guard let userId = sessionManager.currentUser?.id.uuidString else {
+            throw AuthError.userNotFound
+        }
+        
+        guard let container = container else {
+            throw AppError.service(.unknown(NSError(domain: "DIContainer", code: -1, userInfo: [NSLocalizedDescriptionKey: "Container not initialized"])))
         }
         
         await container.journalService.fetchEntries(userId: userId)
+    }
+}
+
+// MARK: - Supporting Views
+private struct HomeHeaderView: View {
+    let date: String
+    let onProfileTap: () -> Void
+    
+    var body: some View {
+        HStack {
+            Text(date)
+                .font(Theme.newYorkHeadline(20))
+                .fontWeight(.medium)
+                .foregroundColor(.white)
+            
+            Spacer()
+            
+            Button(action: onProfileTap) {
+                Image(systemName: "person.circle")
+                    .font(.system(size: 24))
+                    .foregroundColor(.white)
+            }
+        }
+        .padding(.horizontal)
+        .padding(.top, 60)
+        .padding(.bottom, 24)
+        .transition(.opacity)
+    }
+}
+
+private struct EntriesListView: View {
+    let entries: [JournalEntry]
+    let firstEntryAnalysis: String?
+    
+    var body: some View {
+        VStack(spacing: 24) {
+            MoodCard(
+                mood: "Today's Mood",
+                description: firstEntryAnalysis ?? "Share how you're feeling..."
+            )
+            .frame(minHeight: 100)
+            .shadow(color: .black.opacity(0.1), radius: 5)
+            
+            ForEach(entries.prefix(3)) { entry in
+                EntryCard(
+                    title: entry.createdAt.formatted(date: .abbreviated, time: .shortened),
+                    content: entry.text
+                )
+                .frame(minHeight: 80)
+            }
+            
+            if entries.isEmpty {
+                ForEach(0..<2) { _ in
+                    EntryCard(
+                        title: "New Entry",
+                        content: "Tap the aura to start journaling..."
+                    )
+                    .opacity(0.5)
+                }
+            }
+            
+            Color.clear.frame(height: 40)
+        }
+        .padding(.horizontal)
+        .transition(.opacity)
     }
 }
 
