@@ -49,38 +49,26 @@ enum MockData {
     
     @MainActor
     static func createMockContainer() -> DIContainer {
-        let container = DIContainer.preview()
-        return container
-    }
-}
-
-// MARK: - Mock Session Manager
-extension SessionManager {
-    static func mockAuthenticated() -> SessionManager {
-        let manager = SessionManager(skipAuthCheck: true)  
-        manager.currentUser = MockData.user
-        manager.isAuthenticated = true
-        manager.isLoading = false
-        return manager
-    }
-    
-    static func mockUnauthenticated() -> SessionManager {
-        let manager = SessionManager()
-        manager.isAuthenticated = false
-        manager.isLoading = false
-        return manager
-    }
-    
-    static func mockLoading() -> SessionManager {
-        let manager = SessionManager()
-        manager.isLoading = true
-        return manager
-    }
-    
-    static func mockError() -> SessionManager {
-        let manager = SessionManager()
-        manager.error = "Invalid credentials"
-        return manager
+        // Create an authenticated session manager
+        let sessionManager = SessionManager(skipAuthCheck: true)
+        sessionManager.currentUser = MockData.user
+        sessionManager.isAuthenticated = true
+        sessionManager.isLoading = false
+        
+        // Create mock journal service with entries
+        let mockJournalService = MockJournalService()
+        mockJournalService.entries = MockData.journalEntries
+        
+        // Create mock AI service
+        let mockAIService = MockAIService()
+        
+        // Create container with all mock services
+        return DIContainer(
+            aiService: mockAIService,
+            journalService: mockJournalService,
+            sessionManager: sessionManager,
+            errorHandler: ErrorHandler()
+        )
     }
 }
 

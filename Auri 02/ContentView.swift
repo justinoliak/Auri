@@ -8,7 +8,9 @@
 import SwiftUI
 
 struct ContentView: View {
-    @Environment(SessionManager.self) private var sessionManager
+    // Support both types of environment access
+    @Environment(\.sessionManager) private var envSessionManager
+    @EnvironmentObject private var sessionManager: SessionManager
     @State private var showSplash = true
     
     var body: some View {
@@ -25,14 +27,15 @@ struct ContentView: View {
                     }
             } else {
                 #if DEBUG
-                // In debug mode, always show MainTabView with mock data
+                // Debug mode - use mock data with consistent injection
+                let container = MockData.createMockContainer()
                 MainTabView()
-                    .environment(\.container, MockData.createMockContainer())
-                    .environmentObject(SessionManager.mockAuthenticated())
+                    .inject(container)
                 #else
-                // In release mode, check authentication
-                if sessionManager.isAuthenticated {
+                // Release mode - handle real auth flow
+                if sessionManager.isAuthenticated {  // Use the @EnvironmentObject version
                     MainTabView()
+                        .inject(DIContainer.preview())
                 } else {
                     AuthView()
                 }
@@ -43,8 +46,9 @@ struct ContentView: View {
 }
 
 #Preview {
-    ContentView()
-        .environmentObject(SessionManager.mockAuthenticated())
+    let container = MockData.createMockContainer()
+    return ContentView()
+        .inject(container)
         .preferredColorScheme(.dark)
 }
 

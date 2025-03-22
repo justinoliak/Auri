@@ -1,6 +1,14 @@
 import Foundation
 import SwiftUI
 
+// Add this at the top of the file
+#if DEBUG
+enum DebugSettings {
+    /// Set this to true to use real Supabase backend in debug mode
+    static var useRealServices = false
+}
+#endif
+
 // MARK: - Service Protocols
 @MainActor
 protocol ServiceContainer {
@@ -42,32 +50,54 @@ final class DIContainer: ServiceContainer {
         self.errorHandler = errorHandler ?? ErrorHandler()
     }
     
-    #if DEBUG
+    @MainActor
     static func preview() -> DIContainer {
-        let mockJournalService = MockJournalService()
-        mockJournalService.entries = MockData.journalEntries
-        
-        let mockSessionManager = SessionManager.mockAuthenticated()
-        
+        #if DEBUG
+        if DebugSettings.useRealServices {
+            // Use real services even in debug mode
+            let journalService = JournalService(supabase: AppConfig.shared)
+            
+            // CHANGE: Create session manager directly instead of using static method
+            let sessionManager = SessionManager(skipAuthCheck: true)
+            sessionManager.currentUser = MockData.user
+            sessionManager.isAuthenticated = true
+            sessionManager.isLoading = false
+            
+            return DIContainer(
+                aiService: MockAIService(),
+                journalService: journalService,
+                sessionManager: sessionManager,
+                errorHandler: ErrorHandler()
+            )
+        } else {
+            // Use mock services
+            let mockJournalService = MockJournalService()
+            mockJournalService.entries = MockData.journalEntries
+            
+            // CHANGE: Create mock session manager directly
+            let mockSessionManager = SessionManager(skipAuthCheck: true)
+            mockSessionManager.currentUser = MockData.user
+            mockSessionManager.isAuthenticated = true
+            mockSessionManager.isLoading = false
+            
+            return DIContainer(
+                aiService: MockAIService(),
+                journalService: mockJournalService,
+                sessionManager: mockSessionManager,
+                errorHandler: ErrorHandler()
+            )
+        }
+        #else
+        let journalService = JournalService(supabase: AppConfig.shared)
+        let sessionManager = SessionManager()
         return DIContainer(
             aiService: MockAIService(),
-            journalService: mockJournalService,
-            sessionManager: mockSessionManager,
+            journalService: journalService,
+            sessionManager: sessionManager,
             errorHandler: ErrorHandler()
         )
+        #endif
     }
-    #endif
-    
-    #if !DEBUG
-    static func preview() -> DIContainer {
-        DIContainer(
-            aiService: nil,
-            journalService: nil,
-            sessionManager: nil,
-            errorHandler: nil
-        )
-    }
-    #endif
 }
 
 // MARK: - Container Environment
@@ -87,6 +117,7 @@ extension View {
     func inject(_ container: DIContainer) -> some View {
         self
             .environment(\.container, container)
-            .environment(\.sessionManager, container.sessionManager)
+            .environment(\.sessionManager, container.sessionManager)  // For @Environment access
+            .environmentObject(container.sessionManager)  // For @EnvironmentObject access
     }
 }

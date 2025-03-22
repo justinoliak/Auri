@@ -110,7 +110,7 @@ struct HomeView: View {
     
     var body: some View {
         Group {
-            if sessionManager.isAuthenticated {
+            if sessionManager.isAuthenticated {  
                 NavigationStack {
                     ZStack {
                         Theme.backgroundPrimary.ignoresSafeArea()
@@ -151,13 +151,17 @@ struct HomeView: View {
                     }
                 }
             } else {
-                // Show loading or redirect to login
+                // When not authenticated in release mode, show AuthView
+                #if DEBUG
                 Color.black
                     .ignoresSafeArea()
                     .overlay(
                         Text(sessionManager.isLoading ? "Loading..." : "Please sign in")
                             .foregroundColor(.white)
                     )
+                #else
+                AuthView()
+                #endif
             }
         }
         .preferredColorScheme(.dark)
@@ -168,7 +172,7 @@ struct HomeView: View {
                 }
             }
         }
-        .onChange(of: sessionManager.isAuthenticated) { _, isAuthenticated in
+        .onChange(of: sessionManager.isAuthenticated) { _, isAuthenticated in  
             if isAuthenticated {
                 Task {
                     await loadEntriesIfNeeded()
@@ -176,7 +180,7 @@ struct HomeView: View {
             }
         }
         .task {
-            if sessionManager.isAuthenticated {
+            if sessionManager.isAuthenticated {  
                 await loadEntriesIfNeeded()
             }
         }
@@ -198,6 +202,7 @@ struct HomeView: View {
     }
     
     private func loadEntries() async throws {
+        // 
         guard let userId = sessionManager.currentUser?.id.uuidString else {
             throw AuthError.userNotFound
         }
@@ -259,13 +264,17 @@ private struct EntriesListView: View {
             }
             
             if entries.isEmpty {
-                ForEach(0..<2) { _ in
-                    EntryCard(
-                        title: "New Entry",
-                        content: "Tap the aura to start journaling..."
-                    )
-                    .opacity(0.5)
-                }
+                EntryCard(
+                    title: "New Entry",
+                    content: "Tap the aura to start journaling..."
+                )
+                .opacity(0.5)
+                
+                EntryCard(
+                    title: "New Entry",
+                    content: "Tap the aura to start journaling..."
+                )
+                .opacity(0.5)
             }
             
             Color.clear.frame(height: 40)
@@ -278,28 +287,10 @@ private struct EntriesListView: View {
 // MARK: - Preview
 struct HomeView_Previews: PreviewProvider {
     static var previews: some View {
-        Group {
-            // Authenticated Preview
-            HomeView()
-                .inject(DIContainer.preview())
-                .environmentObject(previewSessionManager(authenticated: true))
-                .previewDisplayName("Authenticated")
-            
-            // Loading Preview
-            HomeView()
-                .inject(DIContainer.preview())
-                .environmentObject(previewSessionManager(loading: true))
-                .previewDisplayName("Loading")
-        }
-    }
-    
-    static func previewSessionManager(authenticated: Bool = false, loading: Bool = false) -> SessionManager {
-        let manager = SessionManager()
-        if authenticated {
-            manager.currentUser = MockData.user
-            manager.isAuthenticated = true
-        }
-        manager.isLoading = loading
-        return manager
+        let container = MockData.createMockContainer()
+        return HomeView()
+            .inject(container)
+            .previewDisplayName("Authenticated")
+            .preferredColorScheme(.dark)
     }
 }

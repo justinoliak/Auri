@@ -181,8 +181,18 @@ struct AuthView: View {
         Task {
             if isSignIn {
                 await sessionManager.signIn(email: email, password: password)
+                if sessionManager.isAuthenticated {
+                    // Clear fields on successful sign in
+                    email = ""
+                    password = ""
+                }
             } else {
                 await sessionManager.signUp(email: email, password: password)
+                if !sessionManager.needsEmailConfirmation {
+                    // Clear fields on successful sign up
+                    email = ""
+                    password = ""
+                }
             }
             await MainActor.run {
                 isProcessing = false
