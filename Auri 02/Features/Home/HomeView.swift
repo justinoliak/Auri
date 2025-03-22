@@ -1,3 +1,10 @@
+//
+//  ExampleView.swift
+//  SomeProject
+//
+//  Created by You on 3/20/25.
+//
+
 import SwiftUI
 import os
 
@@ -5,7 +12,7 @@ struct HomeView: View {
     private let logger = Logger(subsystem: "com.justinauri02.Auri-02", category: "HomeView")
     
     @Environment(\.container) private var container: DIContainer?
-    @Environment(SessionManager.self) private var sessionManager
+    @EnvironmentObject private var sessionManager: SessionManager
     
     // MARK: - View State
     @State private var viewState = ViewState()
@@ -19,6 +26,7 @@ struct HomeView: View {
         var showingError = false
         var error: Error?
         var textEntryTransition = false
+        var isLoadingEntries = false
     }
     
     // MARK: - Computed Properties
@@ -101,45 +109,55 @@ struct HomeView: View {
     }
     
     var body: some View {
-        NavigationStack {
-            ZStack {
-                Theme.backgroundPrimary.ignoresSafeArea()
-                
-                ScrollView(showsIndicators: false) {
-                    LazyVStack(spacing: 0) {
-                        headerView
-                        auraSection
-                        entriesView
+        Group {
+            if sessionManager.isAuthenticated {
+                NavigationStack {
+                    ZStack {
+                        Theme.backgroundPrimary.ignoresSafeArea()
+                        
+                        ScrollView(showsIndicators: false) {
+                            LazyVStack(spacing: 0) {
+                                headerView
+                                auraSection
+                                if viewState.isLoadingEntries {
+                                    ProgressView()
+                                        .tint(.white)
+                                        .padding()
+                                } else {
+                                    entriesView
+                                }
+                            }
+                            .padding(.top, 20)
+                        }
+                        .safeAreaInset(edge: .top) {
+                            Color.clear.frame(height: 0)
+                        }
+                        .edgesIgnoringSafeArea(.top)
+                        
+                        if viewState.showTextEntry {
+                            textEntryOverlay
+                        }
                     }
-                    .padding(.top, 20)
+                    .navigationBarHidden(true)
+                    .fullScreenCover(isPresented: $viewState.showingProfile) {
+                        if let container = container {
+                            ProfileView(container: container)
+                        }
+                    }
+                    .alert("Error", isPresented: $viewState.showingError) {
+                        Button("OK", role: .cancel) { }
+                    } message: {
+                        Text(viewState.error?.localizedDescription ?? "An error occurred")
+                    }
                 }
-                .safeAreaInset(edge: .top) {
-                    Color.clear.frame(height: 0)
-                }
-                .edgesIgnoringSafeArea(.top)
-                
-                if viewState.showTextEntry {
-                    textEntryOverlay
-                }
-            }
-            .navigationBarHidden(true)
-            .fullScreenCover(isPresented: $viewState.showingProfile) {
-                if let container = container {
-                    ProfileView(container: container)
-                }
-            }
-            .alert("Error", isPresented: $viewState.showingError) {
-                Button("OK", role: .cancel) { }
-            } message: {
-                Text(viewState.error?.localizedDescription ?? "An error occurred")
-            }
-            .task {
-                do {
-                    try await loadEntries()
-                } catch {
-                    viewState.error = error
-                    viewState.showingError = true
-                }
+            } else {
+                // Show loading or redirect to login
+                Color.black
+                    .ignoresSafeArea()
+                    .overlay(
+                        Text(sessionManager.isLoading ? "Loading..." : "Please sign in")
+                            .foregroundColor(.white)
+                    )
             }
         }
         .preferredColorScheme(.dark)
@@ -150,6 +168,33 @@ struct HomeView: View {
                 }
             }
         }
+        .onChange(of: sessionManager.isAuthenticated) { _, isAuthenticated in
+            if isAuthenticated {
+                Task {
+                    await loadEntriesIfNeeded()
+                }
+            }
+        }
+        .task {
+            if sessionManager.isAuthenticated {
+                await loadEntriesIfNeeded()
+            }
+        }
+    }
+    
+    private func loadEntriesIfNeeded() async {
+        guard !viewState.isLoadingEntries else { return }
+        
+        viewState.isLoadingEntries = true
+        
+        do {
+            try await loadEntries()
+        } catch {
+            viewState.error = error
+            viewState.showingError = true
+        }
+        
+        viewState.isLoadingEntries = false
     }
     
     private func loadEntries() async throws {
@@ -233,8 +278,28 @@ private struct EntriesListView: View {
 // MARK: - Preview
 struct HomeView_Previews: PreviewProvider {
     static var previews: some View {
-        let container = DIContainer.preview()
-        HomeView()
-            .inject(container)
+        Group {
+            // Authenticated Preview
+            HomeView()
+                .inject(DIContainer.preview())
+                .environmentObject(previewSessionManager(authenticated: true))
+                .previewDisplayName("Authenticated")
+            
+            // Loading Preview
+            HomeView()
+                .inject(DIContainer.preview())
+                .environmentObject(previewSessionManager(loading: true))
+                .previewDisplayName("Loading")
+        }
+    }
+    
+    static func previewSessionManager(authenticated: Bool = false, loading: Bool = false) -> SessionManager {
+        let manager = SessionManager()
+        if authenticated {
+            manager.currentUser = MockData.user
+            manager.isAuthenticated = true
+        }
+        manager.isLoading = loading
+        return manager
     }
 }

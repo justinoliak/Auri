@@ -23,10 +23,20 @@ struct ContentView: View {
                             }
                         }
                     }
-            } else if sessionManager.isAuthenticated {
-                MainTabView()
             } else {
-                AuthView()
+                #if DEBUG
+                // In debug mode, always show MainTabView with mock data
+                MainTabView()
+                    .environment(\.container, MockData.createMockContainer())
+                    .environmentObject(SessionManager.mockAuthenticated())
+                #else
+                // In release mode, check authentication
+                if sessionManager.isAuthenticated {
+                    MainTabView()
+                } else {
+                    AuthView()
+                }
+                #endif
             }
         }
     }
@@ -34,8 +44,8 @@ struct ContentView: View {
 
 #Preview {
     ContentView()
-        .environment(SessionManager())
-        .preferredColorScheme(.dark) // Match the app's scheme
+        .environmentObject(SessionManager.mockAuthenticated())
+        .preferredColorScheme(.dark)
 }
 
 // MARK: - Tab Items Configuration

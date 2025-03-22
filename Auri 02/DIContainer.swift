@@ -42,9 +42,32 @@ final class DIContainer: ServiceContainer {
         self.errorHandler = errorHandler ?? ErrorHandler()
     }
     
+    #if DEBUG
     static func preview() -> DIContainer {
-        DIContainer()
+        let mockJournalService = MockJournalService()
+        mockJournalService.entries = MockData.journalEntries
+        
+        let mockSessionManager = SessionManager.mockAuthenticated()
+        
+        return DIContainer(
+            aiService: MockAIService(),
+            journalService: mockJournalService,
+            sessionManager: mockSessionManager,
+            errorHandler: ErrorHandler()
+        )
     }
+    #endif
+    
+    #if !DEBUG
+    static func preview() -> DIContainer {
+        DIContainer(
+            aiService: nil,
+            journalService: nil,
+            sessionManager: nil,
+            errorHandler: nil
+        )
+    }
+    #endif
 }
 
 // MARK: - Container Environment

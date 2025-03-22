@@ -17,9 +17,11 @@ final class SessionManager: ObservableObject {
     var needsEmailConfirmation = false
     
     private let initializationTime: Date
+    private let skipAuthCheck: Bool
     
-    init() {
+    init(skipAuthCheck: Bool = false) {
         self.initializationTime = Date()
+        self.skipAuthCheck = skipAuthCheck
         logger.debug("Initializing SessionManager")
         
         #if DEBUG
@@ -33,11 +35,15 @@ final class SessionManager: ObservableObject {
         
         self.supabase = AppConfig.shared
         
-        Task {
-            logger.debug("Starting auth check")
-            await withTimeout(seconds: 5) {
-                await self.checkAuth()
+        if !skipAuthCheck {
+            Task {
+                logger.debug("Starting auth check")
+                await withTimeout(seconds: 5) {
+                    await self.checkAuth()
+                }
             }
+        } else {
+            isLoading = false
         }
     }
     
