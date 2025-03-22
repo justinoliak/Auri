@@ -106,19 +106,3 @@ class JournalService: JournalServiceProtocol {
         }
     }
 }
-
-@Observable
-class MockJournalService: JournalServiceProtocol {
-    var entries: [JournalEntry] = []
-    var error: String?
-    var isLoading = false
-    
-    func createEntry(text: String, analysis: String?, userId: String) async throws {
-        let entry = JournalEntry(userId: userId, text: text, analysis: analysis)
-        entries.insert(entry, at: 0)
-    }
-    
-    func fetchEntries(userId: String) async {
-        // No-op for preview
-    }
-}

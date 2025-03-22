@@ -12,15 +12,15 @@ import os
 struct Auri_02App: App {
     private let logger = Logger(subsystem: "com.justinauri02.Auri-02", category: "App")
     
-    @State private var sessionManager: SessionManager? = nil
+    @StateObject private var sessionManager = SessionManager()
     @State private var isInitialized = false
     
     var body: some Scene {
         WindowGroup {
             Group {
-                if let sessionManager = sessionManager {
+                if isInitialized {
                     SplashView()
-                        .environment(sessionManager)
+                        .environmentObject(sessionManager)
                 } else {
                     Color.black
                         .ignoresSafeArea()
@@ -33,7 +33,6 @@ struct Auri_02App: App {
             .task {
                 if !isInitialized {
                     logger.debug("Initializing app...")
-                    sessionManager = SessionManager()
                     isInitialized = true
                     logger.debug("App initialization completed")
                 }

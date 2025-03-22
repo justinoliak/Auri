@@ -6,6 +6,7 @@ final class ProfileViewModel {
     private(set) var currentUserEmail: String?
     var notificationsEnabled = true
     var darkModeEnabled = true
+    var error: Error?
     
     init(container: ServiceContainer) {
         self.container = container
@@ -30,21 +31,39 @@ struct ProfileView: View {
     
     var body: some View {
         NavigationStack {
-            VStack(spacing: 20) {
-                if let email = viewModel.currentUserEmail {
-                    Text(email)
-                        .font(Theme.sfProText(16))
-                        .foregroundColor(.white)
+            List {
+                Section {
+                    AccountSection(
+                        email: viewModel.currentUserEmail ?? "",
+                        onSignOut: {
+                            Task {
+                                await viewModel.signOut()
+                                dismiss()
+                            }
+                        }
+                    )
+                } header: {
+                    SectionHeader(text: "Account")
                 }
                 
-                Button("Sign Out") {
-                    Task {
-                        await viewModel.signOut()
-                        dismiss()
-                    }
+                Section {
+                    PreferencesSection(
+                        notificationsEnabled: $viewModel.notificationsEnabled,
+                        darkModeEnabled: $viewModel.darkModeEnabled
+                    )
+                } header: {
+                    SectionHeader(text: "Preferences")
                 }
-                .buttonStyle(.borderedProminent)
+                
+                Section {
+                    AboutSection()
+                } header: {
+                    SectionHeader(text: "About")
+                }
             }
+            .listStyle(.insetGrouped)
+            .scrollContentBackground(.hidden)
+            .background(Theme.backgroundPrimary)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarTitleItem()

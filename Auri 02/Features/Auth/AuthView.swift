@@ -7,6 +7,11 @@ struct AuthView: View {
     @State private var isProcessing = false
     @State private var rememberMe = false
     @State private var isPressed = false
+    @State private var isSignIn: Bool
+    
+    init(isSignIn: Bool = false) {
+        _isSignIn = State(initialValue: isSignIn)
+    }
     
     var body: some View {
         NavigationView {
@@ -15,11 +20,11 @@ struct AuthView: View {
                 
                 VStack(spacing: 24) {
                     VStack(spacing: 8) {
-                        Text("Create Account")
+                        Text(isSignIn ? "Welcome Back" : "Create Account")
                             .font(Theme.newYorkHeadline(32))
                             .foregroundColor(.white)
                         
-                        Text("Start your journey with us")
+                        Text(isSignIn ? "Sign in to continue" : "Start your journey with us")
                             .font(Theme.sfProText(16))
                             .foregroundColor(.gray)
                     }
@@ -86,13 +91,13 @@ struct AuthView: View {
                     .font(Theme.sfProText(14))
                     .padding(.horizontal, 32)
                     
-                    // Sign Up Button
+                    // Sign Up/In Button
                     Button(action: authenticate) {
                         if isProcessing {
                             ProgressView()
                                 .tint(.white)
                         } else {
-                            Text("Sign up")
+                            Text(isSignIn ? "Sign in" : "Sign up")
                                 .font(Theme.sfProText(16).bold())
                         }
                     }
@@ -145,9 +150,11 @@ struct AuthView: View {
                     }
                     
                     Button {
-                        // TODO: Navigate to sign in screen
+                        withAnimation {
+                            isSignIn.toggle()
+                        }
                     } label: {
-                        Text("Have an account? Sign In")
+                        Text(isSignIn ? "Need an account? Sign Up" : "Have an account? Sign In")
                             .font(Theme.sfProText(14))
                             .foregroundColor(.gray)
                     }
@@ -172,7 +179,21 @@ struct AuthView: View {
         isProcessing = true
         
         Task {
-            await sessionManager.signUp(email: email, password: password)
+            if isSignIn {
+                await sessionManager.signIn(email: email, password: password)
+                if sessionManager.isAuthenticated {
+                    // Clear fields on successful sign in
+                    email = ""
+                    password = ""
+                }
+            } else {
+                await sessionManager.signUp(email: email, password: password)
+                if !sessionManager.needsEmailConfirmation {
+                    // Clear fields on successful sign up
+                    email = ""
+                    password = ""
+                }
+            }
             await MainActor.run {
                 isProcessing = false
             }
@@ -180,7 +201,38 @@ struct AuthView: View {
     }
 }
 
-#Preview {
-    AuthView()
-        .environment(SessionManager())
+// MARK: - Previews
+struct AuthView_Previews: PreviewProvider {
+    static var previews: some View {
+        // Sign Up Preview
+        AuthView(isSignIn: false)
+            .environment(makePreviewSessionManager())
+            .previewDisplayName("Sign Up")
+        
+        // Sign In Preview
+        AuthView(isSignIn: true)
+            .environment(makePreviewSessionManager())
+            .previewDisplayName("Sign In")
+        
+        // Loading State Preview
+        AuthView()
+            .environment(makePreviewSessionManager(isLoading: true))
+            .previewDisplayName("Loading")
+        
+        // Error State Preview
+        AuthView()
+            .environment(makePreviewSessionManager(error: "Invalid credentials"))
+            .previewDisplayName("Error State")
+    }
+    
+    // Helper function to create consistent preview session managers
+    private static func makePreviewSessionManager(
+        isLoading: Bool = false,
+        error: String? = nil
+    ) -> SessionManager {
+        let manager = SessionManager()
+        manager.isLoading = isLoading
+        manager.error = error
+        return manager
+    }
 }

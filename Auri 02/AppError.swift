@@ -39,6 +39,7 @@ enum AuthError: Error {
     case sessionExpired
     case emailNotConfirmed
     case unauthorized
+    case userNotFound
     
     var description: String {
         switch self {
@@ -46,6 +47,7 @@ enum AuthError: Error {
         case .sessionExpired: return "Session expired. Please sign in again."
         case .emailNotConfirmed: return "Please confirm your email to continue"
         case .unauthorized: return "You're not authorized to perform this action"
+        case .userNotFound: return "User not found"
         }
     }
 }
@@ -117,6 +119,13 @@ final class ErrorHandler: ObservableObject, ErrorHandling {
         default:
             return .service(.unknown(error))
         }
+    }
+}
+
+// MARK: - Error Handler Extension
+extension ErrorHandling {
+    func handleError(_ error: Error) {
+        handle(error, file: #file, line: #line)
     }
 }
 
