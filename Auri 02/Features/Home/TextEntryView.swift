@@ -34,7 +34,6 @@ import SwiftUI
 struct TextEntryView: View {
     @Bindable private var viewModel: TextEntryViewModel
     @Binding var isPresented: Bool
-    let namespace: Namespace.ID
     
     @Environment(\.dismiss) var dismiss
     @State private var showContent = false
@@ -42,20 +41,19 @@ struct TextEntryView: View {
     @State private var textEditorScale: CGFloat = 0.95
     @State private var showingAnalysis = false
     
+    private let transitionDuration: Double = 0.4
+    
     init(
         isPresented: Binding<Bool>,
-        namespace: Namespace.ID,
         container: ServiceContainer
     ) {
         self._isPresented = isPresented
-        self.namespace = namespace
         self.viewModel = TextEntryViewModel(container: container)
     }
     
     var body: some View {
         ZStack {
             Theme.backgroundPrimary
-                .matchedGeometryEffect(id: "background", in: namespace)
                 .ignoresSafeArea()
             
             VStack(spacing: 20) {
@@ -65,7 +63,8 @@ struct TextEntryView: View {
                     textEditorScale: $textEditorScale,
                     isPresented: $isPresented,
                     canSave: !viewModel.journalText.isEmpty,
-                    onSave: viewModel.saveEntry
+                    onSave: viewModel.saveEntry,
+                    transitionDuration: transitionDuration
                 )
                 
                 JournalEditorView(
@@ -74,9 +73,9 @@ struct TextEntryView: View {
                     textEditorScale: textEditorScale
                 )
                 
-                if showingAnalysis {
-                    AIAnalysisView(analysisText: viewModel.analysisText)
-                        .transition(.scale.combined(with: .opacity))
+                if showingAnalysis, let analysisText = viewModel.analysisText, !analysisText.isEmpty {
+                    AIAnalysisView(analysisText: analysisText)
+                        .transition(.opacity)
                 }
                 
                 AIInsightsButton(
@@ -85,16 +84,17 @@ struct TextEntryView: View {
                 ) {
                     Task {
                         await viewModel.generateAnalysis()
-                        withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
+                        withAnimation(.easeInOut(duration: transitionDuration)) {
                             showingAnalysis = true
                         }
                     }
                 }
             }
             .padding(24)
+            .scaleEffect(showContent ? 1 : 0.95)
         }
         .onAppear {
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+            withAnimation(.easeInOut(duration: transitionDuration)) {
                 showContent = true
                 topBarOffset = 0
                 textEditorScale = 1
@@ -111,6 +111,7 @@ private struct TopBarView: View {
     @Binding var isPresented: Bool
     let canSave: Bool
     let onSave: () -> Void
+    let transitionDuration: Double
     
     var body: some View {
         HStack {
@@ -118,7 +119,8 @@ private struct TopBarView: View {
                 showContent: $showContent,
                 topBarOffset: $topBarOffset,
                 textEditorScale: $textEditorScale,
-                isPresented: $isPresented
+                isPresented: $isPresented,
+                transitionDuration: transitionDuration
             )
             
             Spacer()
@@ -168,20 +170,18 @@ private struct JournalEditorView: View {
 }
 
 private struct AIAnalysisView: View {
-    let analysisText: String?
+    let analysisText: String
     
     var body: some View {
-        if let analysis = analysisText {
-            Text(analysis)
-                .font(Theme.newYorkHeadline(16))
-                .foregroundColor(.white)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding()
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(Color.white.opacity(0.2), lineWidth: 1)
-                )
-        }
+        Text(analysisText)
+            .font(Theme.newYorkHeadline(16))
+            .foregroundColor(.white)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding()
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(Color.white.opacity(0.2), lineWidth: 1)
+            )
     }
 }
 
@@ -190,15 +190,16 @@ private struct CloseButton: View {
     @Binding var topBarOffset: CGFloat
     @Binding var textEditorScale: CGFloat
     @Binding var isPresented: Bool
+    let transitionDuration: Double
     
     var body: some View {
         Button {
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+            withAnimation(.easeInOut(duration: transitionDuration)) {
                 showContent = false
                 topBarOffset = -20
                 textEditorScale = 0.95
             }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + transitionDuration) {
                 isPresented = false
             }
         } label: {
