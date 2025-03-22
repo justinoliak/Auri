@@ -35,6 +35,7 @@ struct ContentView: View {
 #Preview {
     ContentView()
         .environment(SessionManager())
+        .preferredColorScheme(.dark) // Match the app's scheme
 }
 
 // MARK: - Tab Items Configuration

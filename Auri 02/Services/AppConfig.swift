@@ -2,11 +2,37 @@ import Foundation
 import Supabase
 
 enum AppConfig {
-    static let supabaseURL = "https://qmuhnllioedastkvhtzy.supabase.co"
-    static let supabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFtdWhubGxpb2VkYXN0a3ZodHp5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDE5ODY0NjUsImV4cCI6MjA1NzU2MjQ2NX0.caJ5p5aa3lD4As20_bN2yVi4ANSiXv8ClN4Yy5GyVbg"
+    // MARK: - Configuration
     
-    static let shared = SupabaseClient(
-        supabaseURL: URL(string: supabaseURL)!,
-        supabaseKey: supabaseAnonKey
-    )
+    private static var supabaseConfig: (url: String, key: String) {
+        #if DEBUG
+        // Development configuration
+        guard let path = Bundle.main.path(forResource: "Config-Debug", ofType: "plist"),
+              let config = NSDictionary(contentsOfFile: path),
+              let url = config["SUPABASE_URL"] as? String,
+              let key = config["SUPABASE_KEY"] as? String
+        else {
+            fatalError("Missing development configuration. Please add Config-Debug.plist")
+        }
+        return (url, key)
+        #else
+        // Production configuration
+        guard let url = ProcessInfo.processInfo.environment["SUPABASE_URL"],
+              let key = ProcessInfo.processInfo.environment["SUPABASE_KEY"]
+        else {
+            fatalError("Missing production configuration. Please set environment variables")
+        }
+        return (url, key)
+        #endif
+    }
+    
+    // MARK: - Shared Instances
+    
+    static let shared: SupabaseClient = {
+        let client = SupabaseClient(
+            supabaseURL: URL(string: supabaseConfig.url)!,
+            supabaseKey: supabaseConfig.key
+        )
+        return client
+    }()
 }

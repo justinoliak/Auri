@@ -6,15 +6,38 @@
 //
 
 import SwiftUI
+import os
 
 @main
 struct Auri_02App: App {
-    @State private var sessionManager = SessionManager()
+    private let logger = Logger(subsystem: "com.justinauri02.Auri-02", category: "App")
+    
+    @State private var sessionManager: SessionManager? = nil
+    @State private var isInitialized = false
     
     var body: some Scene {
         WindowGroup {
-            SplashView()
-                .environment(sessionManager)
+            Group {
+                if let sessionManager = sessionManager {
+                    SplashView()
+                        .environment(sessionManager)
+                } else {
+                    Color.black
+                        .ignoresSafeArea()
+                        .overlay(
+                            Text("Loading...")
+                                .foregroundColor(.white)
+                        )
+                }
+            }
+            .task {
+                if !isInitialized {
+                    logger.debug("Initializing app...")
+                    sessionManager = SessionManager()
+                    isInitialized = true
+                    logger.debug("App initialization completed")
+                }
+            }
         }
     }
 }
