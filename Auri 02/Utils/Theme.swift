@@ -13,6 +13,16 @@ struct Theme {
     static func newYorkHeadline(_ size: CGFloat, weight: Font.Weight = .bold) -> Font {
         .system(size: size, weight: weight, design: .serif)
     }
-}
 
-// End of file
+    // Add random gradient color
+    static var randomGradientColor: Color {
+        let colors: [Color] = [
+            .blue,
+            .purple,
+            .indigo,
+            .teal,
+            .cyan
+        ]
+        return colors.randomElement() ?? .blue
+    }
+}

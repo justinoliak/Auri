@@ -1,28 +1,22 @@
 import SwiftUI
+import os
 
 struct SplashView: View {
+    private let logger = Logger(subsystem: "com.justinauri02.Auri-02", category: "SplashView")
+    
     @Environment(SessionManager.self) private var sessionManager
-    @State private var isAnimating = false
     
     var body: some View {
         ZStack {
             Theme.backgroundPrimary.ignoresSafeArea()
             
-            VStack(spacing: 24) {
-                // Add WaveView with animation
-                WaveView(isPressed: isAnimating)
-                    .frame(width: 180, height: 180)
-                
-                Text("AURI")
-                    .font(Theme.newYorkHeadline(40))
-                    .foregroundColor(.white)
-                    .opacity(isAnimating ? 1 : 0)
-            }
+            Text("AURI")
+                .font(Theme.newYorkHeadline(40))
+                .foregroundColor(.white)
+                .shadow(color: .white.opacity(0.8), radius: 2)
         }
         .onAppear {
-            withAnimation(.easeInOut(duration: 0.8)) {
-                isAnimating = true
-            }
+            logger.debug("SplashView appeared")
         }
     }
 }

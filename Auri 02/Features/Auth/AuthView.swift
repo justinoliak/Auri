@@ -2,10 +2,11 @@ import SwiftUI
 
 struct AuthView: View {
     @Environment(SessionManager.self) private var sessionManager
-    @State private var isSignUp = false
     @State private var email = ""
     @State private var password = ""
     @State private var isProcessing = false
+    @State private var rememberMe = false
+    @State private var isPressed = false
     
     var body: some View {
         NavigationView {
@@ -13,20 +14,124 @@ struct AuthView: View {
                 Theme.backgroundPrimary.ignoresSafeArea()
                 
                 VStack(spacing: 24) {
-                    Text("Welcome to Auri")
-                        .font(Theme.newYorkHeadline(32))
-                        .foregroundColor(.white)
+                    VStack(spacing: 8) {
+                        Text("Create Account")
+                            .font(Theme.newYorkHeadline(32))
+                            .foregroundColor(.white)
+                        
+                        Text("Start your journey with us")
+                            .font(Theme.sfProText(16))
+                            .foregroundColor(.gray)
+                    }
+                    .padding(.bottom, 32)
                     
                     VStack(spacing: 16) {
-                        TextField("Email", text: $email)
-                            .textFieldStyle(.roundedBorder)
-                            .textInputAutocapitalization(.never)
-                            .autocorrectionDisabled()
-                            .keyboardType(.emailAddress)
+                        // Email Field
+                        HStack(spacing: 12) {
+                            Image(systemName: "envelope")
+                                .foregroundColor(.gray)
+                            ZStack(alignment: .leading) {
+                                if email.isEmpty {
+                                    Text("Email")
+                                        .font(Theme.sfProText(16))
+                                        .foregroundColor(.gray.opacity(0.7))
+                                }
+                                TextField("", text: $email)
+                                    .font(Theme.sfProText(16))
+                                    .textInputAutocapitalization(.never)
+                                    .autocorrectionDisabled()
+                                    .keyboardType(.emailAddress)
+                            }
+                        }
+                        .padding(16)
+                        .background(Color.white.opacity(0.1))
+                        .cornerRadius(12)
                         
-                        SecureField("Password", text: $password)
-                            .textFieldStyle(.roundedBorder)
+                        // Password Field
+                        HStack(spacing: 12) {
+                            Image(systemName: "lock")
+                                .foregroundColor(.gray)
+                            ZStack(alignment: .leading) {
+                                if password.isEmpty {
+                                    Text("At least 8 characters")
+                                        .font(Theme.sfProText(16))
+                                        .foregroundColor(.gray.opacity(0.7))
+                                }
+                                SecureField("", text: $password)
+                                    .font(Theme.sfProText(16))
+                                    .textInputAutocapitalization(.never)
+                                    .autocorrectionDisabled()
+                            }
+                        }
+                        .padding(16)
+                        .background(Color.white.opacity(0.1))
+                        .cornerRadius(12)
                     }
+                    .padding(.horizontal, 32)
+                    
+                    // Remember Me
+                    HStack {
+                        Button {
+                            rememberMe.toggle()
+                        } label: {
+                            HStack {
+                                Image(systemName: rememberMe ? "checkmark.circle.fill" : "circle")
+                                Text("Remember me")
+                            }
+                        }
+                        
+                        Spacer()
+                    }
+                    .foregroundColor(.gray)
+                    .font(Theme.sfProText(14))
+                    .padding(.horizontal, 32)
+                    
+                    // Sign Up Button
+                    Button(action: authenticate) {
+                        if isProcessing {
+                            ProgressView()
+                                .tint(.white)
+                        } else {
+                            Text("Sign up")
+                                .font(Theme.sfProText(16).bold())
+                        }
+                    }
+                    .foregroundColor(isPressed ? .gray : .white)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 50)
+                    .background(Theme.backgroundSecondary)
+                    .cornerRadius(10)
+                    .scaleEffect(isPressed ? 0.95 : 1.0)
+                    .opacity(isPressed ? 0.9 : 1.0)
+                    .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isPressed)
+                    .disabled(email.isEmpty || password.isEmpty || isProcessing)
+                    .gesture(
+                        DragGesture(minimumDistance: 0)
+                            .onChanged { _ in
+                                if !isProcessing {
+                                    isPressed = true
+                                }
+                            }
+                            .onEnded { _ in
+                                isPressed = false
+                            }
+                    )
+                    .padding(.horizontal, 32)
+                    
+                    // Google Sign In Button
+                    Button(action: handleGoogleSignIn) {
+                        HStack {
+                            Image(systemName: "g.circle.fill")
+                                .font(.title3)
+                            Text("Sign up with Google")
+                            .font(Theme.sfProText(16))
+                        }
+                    }
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 50)
+                    .background(Color.white.opacity(0.1))
+                    .cornerRadius(10)
                     .padding(.horizontal, 32)
                     
                     if sessionManager.needsEmailConfirmation {
@@ -39,38 +144,22 @@ struct AuthView: View {
                             .font(Theme.sfProText(14))
                     }
                     
-                    Button(action: authenticate) {
-                        if isProcessing {
-                            ProgressView()
-                                .tint(.white)
-                        } else {
-                            Text(isSignUp ? "Sign Up" : "Sign In")
-                                .font(Theme.sfProText(16).bold())
-                        }
-                    }
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 50)
-                    .background(Theme.backgroundSecondary)
-                    .cornerRadius(10)
-                    .disabled(email.isEmpty || password.isEmpty || isProcessing)
-                    .padding(.horizontal, 32)
-                    
                     Button {
-                        withAnimation {
-                            isSignUp.toggle()
-                            // Clear any errors when switching modes
-                            sessionManager.error = nil
-                            sessionManager.needsEmailConfirmation = false
-                        }
+                        // TODO: Navigate to sign in screen
                     } label: {
-                        Text(isSignUp ? "Already have an account? Sign In" : "Don't have an account? Sign Up")
+                        Text("Have an account? Sign In")
                             .font(Theme.sfProText(14))
                             .foregroundColor(.gray)
                     }
                 }
             }
             .navigationBarHidden(true)
+        }
+    }
+    
+    private func handleGoogleSignIn() {
+        Task {
+            // TODO: Implement Google Sign In
         }
     }
     
@@ -83,11 +172,7 @@ struct AuthView: View {
         isProcessing = true
         
         Task {
-            if isSignUp {
-                await sessionManager.signUp(email: email, password: password)
-            } else {
-                await sessionManager.signIn(email: email, password: password)
-            }
+            await sessionManager.signUp(email: email, password: password)
             await MainActor.run {
                 isProcessing = false
             }
